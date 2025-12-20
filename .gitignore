@@ -1,0 +1,77 @@
+# C++ Build artifacts
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.a
+*.lib
+
+# Executables
+chat_client
+chat_server
+api_server
+notification_service
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+build/
+cmake-build-*/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+*.log
+volumes/
+data/
+
+# Database
+*.db
+*.sqlite
+*.sql.bak
+
+# Logs
+logs/
+*.log
+
+# Dependencies
+vendor/
+third_party/
+_external/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Environment variables
+.env
+.env.local
+
+# Core dumps
+core
+core.*
+
+# Package managers
+conan/
+vcpkg_installed/
