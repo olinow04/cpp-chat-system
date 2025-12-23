@@ -19,6 +19,17 @@ struct User{
     bool is_active;
 };
 
+// Room data structure
+struct Room{
+    int id;
+    std::string uuid;
+    std::string name;
+    std::string description;
+    int created_by;
+    std::string created_at;
+    bool is_private;
+};
+
 // Database access layer for user management
 class Database {
     public: 
@@ -38,6 +49,8 @@ class Database {
         void disconnect();
         bool isConnected() const;
 
+        // ========== USER OPERATIONS ===========
+
         // CRUD operations
         std::optional<User> createUser(const User& user);
         bool updateUser(const User& user);
@@ -53,6 +66,19 @@ class Database {
         std::optional<User> getUserByEmail(const std::string& email) const;
         std::vector<User> getAllUsers() const;
 
+        // ========== ROOM OPERATIONS ===========
+
+        // CRUD operations
+        std::optional<Room> createRoom(const std::string& name, const std::string& description, int created_by, bool is_private = false);
+        bool updateRoom(int id, const std::string& name, const std::string& description);
+        bool deleteRoom(int id);
+
+        // Query methods
+        std::optional<Room> getRoomById(int id) const;
+        std::optional<Room> getRoomByName(const std::string& name) const;
+        std::vector<Room> getAllRooms() const;
+        std::vector<Room> getPublicRooms() const;
+        
     private:
         std::unique_ptr<pqxx::connection> conn_;
         std::string connectionString_;
@@ -60,4 +86,5 @@ class Database {
 
         // Helper function
         User rowToUser(const pqxx::row& row) const;
+        Room rowToRoom(const pqxx::row& row) const;
 };

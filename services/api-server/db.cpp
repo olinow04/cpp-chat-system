@@ -8,6 +8,8 @@ Database::~Database() {
     disconnect();
 }
 
+// Connection management
+
 bool Database::connect() {
     try {
         // Create PostgreSQL database connection
@@ -33,6 +35,8 @@ void Database::disconnect() {
 bool Database::isConnected() const {
     return connected_;
 }
+
+// ========== USER OPERATIONS ===========
 
 User Database::rowToUser(const pqxx::row& row) const {
     return User{
@@ -216,6 +220,148 @@ std::vector<User> Database::getAllUsers() const {
         std::cerr << "Get all users error: " << e.what() << std::endl;
     }
     return users;
+}
+
+// ========== ROOM OPERATIONS ===========
+
+Room Database::rowToRoom(const pqxx::row& row) const {
+    // Convert PostgreSQL row to Room struct
+    // Handle NULL values for description and created_by fields
+    return Room{
+        row["id"].as<int>(),
+        row["uuid"].as<std::string>(),
+        row["name"].as<std::string>(),
+        row["description"].is_null() ? "" : row["description"].as<std::string>(),
+        row["created_by"].is_null() ? 0 : row["created_by"].as<int>(),
+        row["created_at"].as<std::string>(),
+        row["is_private"].as<bool>()
+    };
+}
+
+std::optional<Room> Database::createRoom(const std::string& name, const std::string& description, int created_by, bool is_private){
+    if(!connected_) return std::nullopt;
+    try {
+        // Begin transaction for room creation
+        pqxx::work txn(*conn_);
+        // Execute parameterized INSERT query with RETURNING clause
+        pqxx::result r = txn.exec(
+            "INSERT INTO rooms (name, description, created_by, is_private) "
+            "VALUES ($1, $2, $3, $4) RETURNING *",
+            pqxx::params(name, description, created_by, is_private)
+        );
+        // Commit transaction
+        txn.commit();
+
+        if(!r.empty()) {
+            std::cout << "Room created: " << name << std::endl;
+            return rowToRoom(r[0]);
+        }
+        return std::nullopt;
+    } catch (const std::exception& e) {
+        std::cerr << "Create room error: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+
+bool Database::updateRoom(int id, const std::string& name, const std::string& description){
+    if(!connected_) return false;
+    try {
+        // Room update transaction
+        pqxx::work txn(*conn_);
+        // Execute UPDATE with parameters
+        txn.exec(
+            "UPDATE rooms SET name=$1, description=$2 WHERE id=$3",
+            pqxx::params(name, description, id)
+        );
+        txn.commit();
+        std::cout << "Room updated: " << id << std::endl;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Update room error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool Database::deleteRoom(int id){
+    if(!connected_) return false;
+    try {
+        pqxx::work txn(*conn_);
+        // DELETE room with parameterized query
+        txn.exec("DELETE FROM rooms WHERE id=$1", pqxx::params(id));
+        txn.commit();
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Delete room error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+std::optional<Room> Database::getRoomByName(const std::string& name) const{
+    if(!connected_) return std::nullopt;
+    try {
+        // Read-only transaction
+        pqxx::work txn(*conn_);
+        // Execute SELECT with room name parameter
+        pqxx::result r = txn.exec("SELECT * FROM rooms WHERE name=$1", pqxx::params(name));
+        if(!r.empty()) {
+            return rowToRoom(r[0]);
+        }
+        return std::nullopt;
+    } catch (const std::exception& e) {
+        std::cerr << "Get room by name error: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+
+std::optional<Room> Database::getRoomById(int id) const{
+    if(!connected_) return std::nullopt;
+    try {
+        // Read-only transaction
+        pqxx::work txn(*conn_);
+        // Execute SELECT with room id parameter
+        pqxx::result r = txn.exec("SELECT * FROM rooms WHERE id=$1", pqxx::params(id));
+        if(!r.empty()) {
+            return rowToRoom(r[0]);
+        }
+        return std::nullopt;
+    } catch (const std::exception& e) {
+        std::cerr << "Get room by id error: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+
+std::vector<Room> Database::getAllRooms() const{
+    std::vector<Room> rooms;
+    if(!connected_) return rooms;
+    try {
+        pqxx::work txn(*conn_);
+        // Fetch all rooms ordered by creation date (newest first)
+        pqxx::result r = txn.exec("SELECT * FROM rooms ORDER BY created_at DESC");
+        // Iterate through result set and convert each row
+        for(const auto& row : r){
+            rooms.push_back(rowToRoom(row));
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Get all rooms error: " << e.what() << std::endl;
+    }
+    return rooms;
+}
+
+std::vector<Room> Database::getPublicRooms() const{
+    std::vector<Room> rooms;
+    if(!connected_) return rooms;
+    try {
+        pqxx::work txn(*conn_);
+        // Fetch only public rooms (is_private=false) ordered by creation date
+        pqxx::result r = txn.exec("SELECT * FROM rooms WHERE is_private=false ORDER BY created_at DESC");
+        // Iterate through result set and convert each row
+        for(const auto& row : r){
+            rooms.push_back(rowToRoom(row));
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Get public rooms error: " << e.what() << std::endl;
+    }
+    return rooms;
 }
 
 
