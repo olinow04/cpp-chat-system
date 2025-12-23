@@ -16,6 +16,24 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Find required packages
+find_package(PostgreSQL REQUIRED)
+
+# Find libpqxx
+find_path(PQXX_INCLUDE_DIR pqxx/pqxx
+    HINTS /opt/homebrew/include /usr/local/include
+)
+find_library(PQXX_LIBRARY NAMES pqxx
+    HINTS /opt/homebrew/lib /usr/local/lib
+)
+
+if(NOT PQXX_INCLUDE_DIR OR NOT PQXX_LIBRARY)
+    message(FATAL_ERROR "libpqxx not found. Install: brew install libpqxx")
+endif()
+
+message(STATUS "Found libpqxx: ${PQXX_LIBRARY}")
+message(STATUS "libpqxx include: ${PQXX_INCLUDE_DIR}")
+
 # Options
 option(BUILD_CLIENT "Build chat client" ON)
 option(BUILD_API_SERVER "Build API server" ON)

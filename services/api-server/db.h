@@ -1,0 +1,63 @@
+#pragma once 
+
+#include <pqxx/pqxx>
+#include <optional>
+#include <string>
+#include <vector>
+#include <memory>
+
+// User data structure
+struct User{
+    int id; 
+    std::string uuid;
+    std::string username;
+    std::string email;
+    std::string password_hash;
+    std::string created_at;
+    std::string updated_at;
+    std::string last_login;
+    bool is_active;
+};
+
+// Database access layer for user management
+class Database {
+    public: 
+        explicit Database(const std::string& connectionString);
+        ~Database();
+
+        // Prevent copying
+        Database(const Database&) = delete;
+        Database& operator=(const Database&) = delete;
+
+        // Allow moving
+        Database(Database&&) = default;
+        Database& operator=(Database&&) = default;
+ 
+        // Connection management
+        bool connect();
+        void disconnect();
+        bool isConnected() const;
+
+        // CRUD operations
+        std::optional<User> createUser(const User& user);
+        bool updateUser(const User& user);
+        bool deleteUser(int id);
+
+        // Helper methods
+        bool updateLastLogin(int id);
+        bool setUserActive(int id, bool active);
+
+        // Query methods
+        std::optional<User> getUserByUsername(const std::string& username) const;
+        std::optional<User> getUserById(int id) const;
+        std::optional<User> getUserByEmail(const std::string& email) const;
+        std::vector<User> getAllUsers() const;
+
+    private:
+        std::unique_ptr<pqxx::connection> conn_;
+        std::string connectionString_;
+        bool connected_;
+
+        // Helper function
+        User rowToUser(const pqxx::row& row) const;
+};
