@@ -6,7 +6,14 @@
 #include <vector>
 #include <memory>
 
-// User data structure
+/**
+ * Database Access Layer for Chat System
+ * Provides CRUD operations and queries for users, rooms, messages, and room memberships
+ * Uses PostgreSQL with libpqxx library for database operations
+ * All methods use parameterized queries to prevent SQL injection
+ */
+
+// User data structure - represents a user in the system
 struct User{
     int id; 
     std::string username;
@@ -18,7 +25,7 @@ struct User{
     bool is_active;
 };
 
-// Room data structure
+// Room data structure - represents a chat room
 struct Room{
     int id;
     std::string name;
@@ -28,7 +35,7 @@ struct Room{
     bool is_private;
 };
 
-// Message data structure
+// Message data structure - represents a message in a chat room
 struct Message{
     int id;
     int room_id;
@@ -40,8 +47,15 @@ struct Message{
     bool is_deleted;
 };
 
-
-// Database access layer for user management
+/**
+ * Database class - Main database access layer
+ * Manages PostgreSQL connection and provides methods for:
+ * - User management (CRUD, authentication helpers)
+ * - Room management (CRUD, queries)
+ * - Room membership operations
+ * - Message operations (CRUD, queries with pagination)
+ * All methods use parameterized queries to prevent SQL injection
+ */
 class Database {
     public: 
         explicit Database(const std::string& connectionString);
@@ -111,11 +125,11 @@ class Database {
         int getMessageCountInRoom(int room_id) const;
 
     private:
-        std::unique_ptr<pqxx::connection> conn_;
-        std::string connectionString_;
-        bool connected_;
+        std::unique_ptr<pqxx::connection> conn_;  // PostgreSQL connection object
+        std::string connectionString_;            // Database connection string
+        bool connected_;                          // Connection status flag
 
-        // Helper function
+        // Helper functions to convert database rows to structs
         User rowToUser(const pqxx::row& row) const;
         Room rowToRoom(const pqxx::row& row) const;
         Message rowToMessage(const pqxx:: row& row) const;

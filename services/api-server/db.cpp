@@ -1,14 +1,22 @@
+/**
+ * Database Implementation File
+ * Contains all database operations for the chat system
+ * Uses libpqxx for PostgreSQL interaction with parameterized queries
+ */
+
 #include "db.h"
 #include <iostream>
 
+// Constructor - initialize database with connection string
 Database::Database(const std::string& connectionString)
     : connectionString_(connectionString), connected_(false) {}
 
+// Destructor - ensure proper disconnection
 Database::~Database() {
     disconnect();
 }
 
-// Connection management
+// ========== CONNECTION MANAGEMENT ===========
 
 bool Database::connect() {
     try {
@@ -38,6 +46,7 @@ bool Database::isConnected() const {
 
 // ========== USER OPERATIONS ===========
 
+// Helper function to convert database row to User struct
 User Database::rowToUser(const pqxx::row& row) const {
     return User{
         // Convert PostgreSQL row values to C++ types
@@ -223,6 +232,7 @@ std::vector<User> Database::getAllUsers() const {
 
 // ========== ROOM OPERATIONS ===========
 
+// Helper function to convert database row to Room struct
 Room Database::rowToRoom(const pqxx::row& row) const {
     // Convert PostgreSQL row to Room struct
     // Handle NULL values for description and created_by fields
@@ -474,6 +484,7 @@ bool Database::isUserInRoom(int user_id, int room_id) const{
 
 // ========== MESSAGE OPERATIONS ===========
 
+// Helper function to convert database row to Message struct
 Message Database::rowToMessage(const pqxx:: row& row) const {
     return Message{
         row["id"].as<int>(),
@@ -482,7 +493,7 @@ Message Database::rowToMessage(const pqxx:: row& row) const {
         row["content"].as<std::string>(),
         row["message_type"].as<std::string>(),
         row["created_at"].as<std::string>(),
-        // Handle NULL updated_at
+        // Handle NULL edited_at
         row["edited_at"].is_null() ? "" : row["edited_at"].as<std::string>(),
         row["is_deleted"].as<bool>()
     };
@@ -535,6 +546,7 @@ bool Database::updateMessage(int id, const std::string& content){
 bool Database::deleteMessage(int id){
     if(!connected_) return false;
     try {
+        // Soft delete - mark message as deleted instead of removing from database
         pqxx::work txn(*conn_);
         txn.exec(
             "UPDATE messages SET is_deleted=true WHERE id=$1",
@@ -551,7 +563,9 @@ bool Database::deleteMessage(int id){
 std::optional<Message> Database::getMessageById(int id) const{
     if(!connected_) return std::nullopt;
     try {
+        // Read-only transaction
         pqxx::work txn(*conn_);
+        // Fetch message by ID (includes deleted messages)
         pqxx::result r = txn.exec(
             "SELECT * FROM messages WHERE id=$1",
             pqxx::params(id)
@@ -570,8 +584,10 @@ std::vector<Message> Database::getMessagesByRoom(int room_id, int limit, int off
     std::vector<Message> messages;
     if(!connected_) return messages;
     try {
+        // Read-only transaction
         pqxx::work txn(*conn_);
         // Fetch messages for the specified room with pagination
+        // Excludes soft-deleted messages, ordered by newest first
         pqxx::result r = txn.exec(
             "SELECT * FROM messages "
             "WHERE room_id=$1 AND is_deleted=false "
@@ -592,8 +608,10 @@ std::vector<Message> Database::getMessagesByRoom(int room_id, int limit, int off
 int Database::getMessageCountInRoom(int room_id) const{
     if(!connected_) return 0;
     try {
+        // Read-only transaction
         pqxx::work txn(*conn_);
         // Execute COUNT query to get number of messages in the room
+        // Excludes soft-deleted messages
         pqxx::result r = txn.exec(
             "SELECT COUNT(*) FROM messages WHERE room_id=$1 AND is_deleted=false",
             pqxx::params(room_id)
