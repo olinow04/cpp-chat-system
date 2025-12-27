@@ -42,7 +42,6 @@ User Database::rowToUser(const pqxx::row& row) const {
     return User{
         // Convert PostgreSQL row values to C++ types
         row["id"].as<int>(),
-        row["uuid"].as<std::string>(),
         row["username"].as<std::string>(),
         row["email"].as<std::string>(),
         row["password_hash"].as<std::string>(),
@@ -229,7 +228,6 @@ Room Database::rowToRoom(const pqxx::row& row) const {
     // Handle NULL values for description and created_by fields
     return Room{
         row["id"].as<int>(),
-        row["uuid"].as<std::string>(),
         row["name"].as<std::string>(),
         row["description"].is_null() ? "" : row["description"].as<std::string>(),
         row["created_by"].is_null() ? 0 : row["created_by"].as<int>(),
@@ -364,4 +362,112 @@ std::vector<Room> Database::getPublicRooms() const{
     return rooms;
 }
 
+std::vector<Room> Database::getRoomsByUser(int user_id) const{
+    std::vector<Room> rooms;
+    if(!connected_) return rooms;
+    try {
+        // Read-only transaction
+        pqxx::work txn(*conn_);
+        // Fetch all rooms where user is a member
+        // JOIN with room_members to find user's rooms, ordered by newest first
+        pqxx::result r = txn.exec(
+            "SELECT r.* FROM rooms r "
+            "JOIN room_members rm ON r.id = rm.room_id "
+            "WHERE rm.user_id = $1 "
+            "ORDER BY r.created_at DESC",
+            pqxx::params(user_id)
+        );
+        // Convert each room row to Room object
+        for(const auto& row : r){
+            rooms.push_back(rowToRoom(row));
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Get rooms by user error: " << e.what() << std::endl;
+    }
+    return rooms;
+}
 
+// ========== ROOM MEMBER OPERATIONS ===========
+
+bool Database::addUserToRoom(int user_id, int room_id, const std::string& role){
+    if(!connected_) return false;
+    try {
+        // Begin transaction for adding user to room
+        pqxx::work txn(*conn_);
+
+        // Execute INSERT with ON CONFLICT to prevent duplicates
+        txn.exec(
+            "INSERT INTO room_members (user_id, room_id, role) "
+            "VALUES ($1, $2, $3) "
+            "ON CONFLICT (room_id, user_id) DO NOTHING",
+            pqxx::params(user_id, room_id, role)
+        );
+        txn.commit();
+        std::cout << "User " << user_id << " added to room " << room_id << std::endl;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Add user to room error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool Database::removeUserFromRoom(int user_id, int room_id){
+    if(!connected_) return false;
+    try {
+        // Begin transaction for removing user from room
+        pqxx::work txn(*conn_);
+        // Execute DELETE with user and room parameters
+        txn.exec(
+            "DELETE FROM room_members WHERE user_id = $1 AND room_id = $2",
+            pqxx::params(user_id, room_id)
+        );
+        txn.commit();
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Remove user from room error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+std::vector<User> Database::getRoomMembers(int room_id) const{
+    std::vector<User> members;
+    if(!connected_) return members;
+    try {
+        // Read-only transaction
+        pqxx::work txn(*conn_);
+        // Fetch all users belonging to the specified room
+        // JOIN with room_members table and order by join date
+        pqxx::result r = txn.exec(
+            "SELECT u.* FROM users u "
+            "JOIN room_members rm ON u.id = rm.user_id "
+            "WHERE rm.room_id = $1 "
+            "ORDER BY rm.joined_at",
+            pqxx::params(room_id)
+        );
+        // Convert each row to User object
+        for(const auto& row : r){
+            members.push_back(rowToUser(row));
+        }
+        return members;
+    } catch (const std::exception& e) {
+        std::cerr << "Get room members error: " << e.what() << std::endl;
+    }
+    return members;
+}
+
+bool Database::isUserInRoom(int user_id, int room_id) const{
+    if(!connected_) return false;
+    try {
+        // Read-only transaction
+        pqxx::work txn(*conn_);
+        // Check if membership record exists
+        pqxx::result r = txn.exec(
+            "SELECT 1 FROM room_members WHERE user_id = $1 AND room_id = $2",
+            pqxx::params(user_id, room_id)
+        );
+        return !r.empty();
+    } catch (const std::exception& e) {
+        std::cerr << "Is user in room error: " << e.what() << std::endl;
+        return false;
+    }
+}

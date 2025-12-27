@@ -9,7 +9,6 @@
 // User data structure
 struct User{
     int id; 
-    std::string uuid;
     std::string username;
     std::string email;
     std::string password_hash;
@@ -22,7 +21,6 @@ struct User{
 // Room data structure
 struct Room{
     int id;
-    std::string uuid;
     std::string name;
     std::string description;
     int created_by;
@@ -78,7 +76,15 @@ class Database {
         std::optional<Room> getRoomByName(const std::string& name) const;
         std::vector<Room> getAllRooms() const;
         std::vector<Room> getPublicRooms() const;
-        
+        std::vector<Room> getRoomsByUser(int user_id) const;
+
+         // ========== ROOM MEMBER OPERATIONS ===========
+
+        bool addUserToRoom(int user_id, int room_id, const std::string& role = "member");
+        bool removeUserFromRoom(int user_id, int room_id);
+        std::vector<User> getRoomMembers(int room_id) const;
+        bool isUserInRoom(int user_id, int room_id) const;
+
     private:
         std::unique_ptr<pqxx::connection> conn_;
         std::string connectionString_;
