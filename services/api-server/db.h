@@ -28,6 +28,19 @@ struct Room{
     bool is_private;
 };
 
+// Message data structure
+struct Message{
+    int id;
+    int room_id;
+    int user_id;
+    std::string content;
+    std::string message_type;
+    std::string created_at;
+    std::string edited_at;
+    bool is_deleted;
+};
+
+
 // Database access layer for user management
 class Database {
     public: 
@@ -85,6 +98,18 @@ class Database {
         std::vector<User> getRoomMembers(int room_id) const;
         bool isUserInRoom(int user_id, int room_id) const;
 
+        // ========== MESSAGE OPERATIONS ===========
+
+        // CRUD operations
+        std::optional<Message> createMessage(int room_id, int user_id, const std::string& content, const std::string& message_type = "text");
+        bool updateMessage(int id, const std::string& content);
+        bool deleteMessage(int id);
+
+        // Query methods
+        std::optional<Message> getMessageById(int id) const;
+        std::vector<Message> getMessagesByRoom(int room_id, int limit = 50, int offset = 0) const;
+        int getMessageCountInRoom(int room_id) const;
+
     private:
         std::unique_ptr<pqxx::connection> conn_;
         std::string connectionString_;
@@ -93,4 +118,5 @@ class Database {
         // Helper function
         User rowToUser(const pqxx::row& row) const;
         Room rowToRoom(const pqxx::row& row) const;
+        Message rowToMessage(const pqxx:: row& row) const;
 };

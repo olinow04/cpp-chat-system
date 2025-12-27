@@ -471,3 +471,139 @@ bool Database::isUserInRoom(int user_id, int room_id) const{
         return false;
     }
 }
+
+// ========== MESSAGE OPERATIONS ===========
+
+Message Database::rowToMessage(const pqxx:: row& row) const {
+    return Message{
+        row["id"].as<int>(),
+        row["room_id"].as<int>(),
+        row["user_id"].as<int>(),
+        row["content"].as<std::string>(),
+        row["message_type"].as<std::string>(),
+        row["created_at"].as<std::string>(),
+        // Handle NULL updated_at
+        row["edited_at"].is_null() ? "" : row["edited_at"].as<std::string>(),
+        row["is_deleted"].as<bool>()
+    };
+}
+
+std::optional<Message> Database::createMessage(int room_id, int user_id, const std::string& content, const std::string& message_type){
+    if(!connected_) return std::nullopt;
+    try {
+        // Begin transaction for message creation
+        pqxx::work txn(*conn_);
+        // Execute parameterized INSERT query with RETURNING clause
+        pqxx::result r = txn.exec(
+            "INSERT INTO messages (room_id, user_id, content, message_type) "
+            "VALUES ($1, $2, $3, $4) RETURNING *",
+            pqxx::params(room_id, user_id, content, message_type)
+        );
+        // Commit transaction
+        txn.commit();
+
+        if(!r.empty()) {
+            std::cout << "Message created in room " << room_id << " by user " << user_id << std::endl;
+            return rowToMessage(r[0]);
+        }
+        return std::nullopt;
+    } catch (const std::exception& e) {
+        std::cerr << "Create message error: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+
+bool Database::updateMessage(int id, const std::string& content){
+    if(!connected_) return false;
+    try {
+        // Message update transaction
+        pqxx::work txn(*conn_);
+        // Execute UPDATE with parameters
+        txn.exec(
+            "UPDATE messages SET content=$1, edited_at=CURRENT_TIMESTAMP WHERE id=$2",
+            pqxx::params(content, id)
+        );
+        txn.commit();
+        std::cout << "Message updated: " << id << std::endl;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Update message error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool Database::deleteMessage(int id){
+    if(!connected_) return false;
+    try {
+        pqxx::work txn(*conn_);
+        txn.exec(
+            "UPDATE messages SET is_deleted=true WHERE id=$1",
+            pqxx::params(id)
+        );
+        txn.commit();
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Delete message error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+std::optional<Message> Database::getMessageById(int id) const{
+    if(!connected_) return std::nullopt;
+    try {
+        pqxx::work txn(*conn_);
+        pqxx::result r = txn.exec(
+            "SELECT * FROM messages WHERE id=$1",
+            pqxx::params(id)
+        );
+        if(!r.empty()) {
+            return rowToMessage(r[0]);
+        }
+        return std::nullopt;
+    } catch (const std::exception& e) {
+        std::cerr << "Get message by ID error: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+
+std::vector<Message> Database::getMessagesByRoom(int room_id, int limit, int offset) const{
+    std::vector<Message> messages;
+    if(!connected_) return messages;
+    try {
+        pqxx::work txn(*conn_);
+        // Fetch messages for the specified room with pagination
+        pqxx::result r = txn.exec(
+            "SELECT * FROM messages "
+            "WHERE room_id=$1 AND is_deleted=false "
+            "ORDER BY created_at DESC "
+            "LIMIT $2 OFFSET $3",
+            pqxx::params(room_id, limit, offset)
+        );
+        // Convert each row to Message object
+        for(const auto& row : r){
+            messages.push_back(rowToMessage(row));
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Get messages by room error: " << e.what() << std::endl;
+    }
+    return messages;
+}
+
+int Database::getMessageCountInRoom(int room_id) const{
+    if(!connected_) return 0;
+    try {
+        pqxx::work txn(*conn_);
+        // Execute COUNT query to get number of messages in the room
+        pqxx::result r = txn.exec(
+            "SELECT COUNT(*) FROM messages WHERE room_id=$1 AND is_deleted=false",
+            pqxx::params(room_id)
+        );
+        if(!r.empty()) {
+            return r[0][0].as<int>();
+        }
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "Get message count in room error: " << e.what() << std::endl;
+        return 0;
+    }
+}
