@@ -112,6 +112,78 @@ int main() {
     }
 });
 
+    // POST /api/login - User login
+    svr.Post("/api/login", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse JSON request body
+            json j = json::parse(req.body);
+
+            // Validate required fields
+            if(!j.contains("username") || !j.contains("password")){
+                json error = {{"error", "Missing required fields: username, password"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Extract credentials from request
+            std::string username = j["username"];
+            std::string password = j["password"];
+
+            // Get user from database
+            auto user = db.getUserByUsername(username);
+
+            // Check if user exists
+            if(!user){
+                json error = {{"error", "Invalid credentials"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 401;
+                return;
+            }
+            // Verify password (TODO: Use bcrypt verify)
+            if(user->password_hash != password){ 
+                json error = {{"error", "Invalid credentials"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 401;
+                return;
+            }
+
+            // Check if account is active
+            if(!user->is_active){
+                json error = {{"error", "Account is disabled"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 403;
+                return;
+            }
+
+            // Update last login timestamp
+            db.updateLastLogin(user->id);
+
+            // Return success response with user data (without password)
+            json response = {
+                {"id", user->id},
+                {"username", user->username},
+                {"email", user->email},
+                {"message", "Login successful"}
+            };
+
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+
+        } catch(json::parse_error& e){
+            // Handle invalid JSON format
+            json error = {{"error", "Invalid JSON"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 400;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Login error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
     svr.listen("0.0.0.0", 8080);
