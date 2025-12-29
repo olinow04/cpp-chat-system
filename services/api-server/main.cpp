@@ -184,6 +184,44 @@ int main() {
         }
     });
 
+
+    // GET /api/users/:id - Get user by ID
+    svr.Get(R"(/api/users/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse user ID from URL
+            int userId = std::stoi(req.matches[1]);
+
+            // Get user from database
+            auto user = db.getUserById(userId);
+
+            // Check if user exists
+            if(!user){
+                json error = {{"error", "User not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Prepare response with user data
+            json response = {
+                {"id", user->id},
+                {"username", user->username},
+                {"email", user->email}
+            };
+
+            // Return user data
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Get user error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
     svr.listen("0.0.0.0", 8080);
