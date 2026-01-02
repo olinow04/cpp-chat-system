@@ -422,6 +422,88 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
     }
 });
 
+    // POST /api/rooms/:id/members - Add a user to a room
+    svr.Post(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse room ID from URL
+            int roomId = std::stoi(req.matches[1]);
+            
+            // Parse JSON request body
+            json j = json::parse(req.body);
+
+            // Validate required fields
+            if(!j.contains("user_id")){
+                json error = {{"error", "Missing required field: user_id"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+            
+            // Extract user ID and optional role from request
+            int userId = j["user_id"];
+            std::string role = j.value("role", "member");
+
+            // Check if room exists
+            auto room = db.getRoomById(roomId);
+            if(!room){
+                json error = {{"error", "Room not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Check if user exists
+            auto user = db.getUserById(userId);
+            if(!user){
+                json error = {{"error", "User not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Check if user is already in the room
+            if(db.isUserInRoom(userId, roomId)){
+                json error = {{"error", "User is already a member of the room"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 409;
+                return;
+            }
+
+            // Add user to room in database
+            bool success = db.addUserToRoom(userId, roomId, role);
+
+            // Check if adding user failed
+            if(!success){
+                json error = {{"error", "Failed to add user to room"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response
+            json response = {
+                {"message", "User added to room successfully"},
+                {"room_id", roomId},
+                {"user_id", userId},
+                {"role", role}
+            };
+
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+            } catch(json::parse_error& e){
+                // Handle invalid JSON format
+                json error = {{"error", "Invalid JSON format"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+            } catch(const std::exception& e){
+                // Handle unexpected errors
+                std::cerr << "Add user to room error: " << e.what() << std::endl;
+                json error = {{"error", "Internal server error"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+            }
+    });
+
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
     svr.listen("0.0.0.0", 8080);
