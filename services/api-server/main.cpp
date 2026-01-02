@@ -387,7 +387,40 @@ int main() {
         res.set_content(error.dump(), "application/json");
         res.status = 500;
     }
-}); 
+});
+
+// GET /api/rooms/:id/members - Get members of a specific room
+svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httplib::Response& res){
+    try {
+        // Parse room ID from URL
+        int roomId = std::stoi(req.matches[1]);
+
+        // Get room members from database
+        auto members = db.getRoomMembers(roomId);
+
+        // Prepare response with member data
+        json response = json::array();
+
+        // Populate member data into JSON array
+        for(const auto& user : members){
+            response.push_back({
+                {"id", user.id},
+                {"username", user.username},
+                {"email", user.email}
+            });
+        }
+        
+        // Return member list
+        res.set_content(response.dump(), "application/json");
+        res.status = 200;
+    } catch(const std::exception& e){
+        // Handle unexpected errors
+        std::cerr << "Get room members error: " << e.what() << std::endl;
+        json error = {{"error", "Internal server error"}};
+        res.set_content(error.dump(), "application/json");
+        res.status = 500;
+    }
+});
 
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
