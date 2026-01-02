@@ -294,6 +294,65 @@ int main() {
         }
     });
 
+    // POST /api/rooms - Create a new chat room
+    svr.Post("/api/rooms", [&db](const httplib::Request& req, httplib::Response& res){
+        try{
+            // Parse JSON request body
+            json j = json::parse(req.body);
+
+            // Validate required fields
+            if(!j.contains("name") || !j.contains("description") || !j.contains("created_by")){
+                json error = {{"error", "Missing required fields: name, description, created_by"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Extract room data from request
+            std::string name = j["name"];
+            std::string description = j["description"];
+            int created_by = j["created_by"];
+            bool is_private = j.value("is_private", false);
+
+            // Create room in database
+            auto createRoom = db.createRoom(name, description, created_by, is_private);
+
+            // Check if room creation failed
+            if(!createRoom){
+                json error = {{"error", "Failed to create room"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response with room data
+            json response = {
+                {"id", createRoom->id},
+                {"name", createRoom->name},
+                {"description", createRoom->description},
+                {"created_by", createRoom->created_by},
+                {"created_at", createRoom->created_at},
+                {"is_private", createRoom->is_private},
+                {"message", "Room created successfully"}
+            };
+            
+            // Send response
+            res.set_content(response.dump(), "application/json");
+            res.status = 201;
+        } catch(json::parse_error& e){
+            // Handle invalid JSON format
+            json error = {{"error", "Invalid JSON format"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 400;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Create room error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
     svr.listen("0.0.0.0", 8080);
