@@ -504,6 +504,68 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
             }
     });
 
+    // ==== MESSAGE ENDPOINTS ======
+
+    // GET /api/rooms/:room_id/messages - Get messages from a specific room
+    svr.Get(R"(/api/rooms/(\d+)/messages)", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse room ID from URL
+            int roomId = std::stoi(req.matches[1]);
+
+            // Check if room exists
+            auto room = db.getRoomById(roomId);
+            if(!room){
+                json error = {{"error", "Room not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Get paginantion parameters from query string
+            int limit = 50;
+            int offset = 0;
+
+            if(req.has_param("limit")){
+                limit = std::stoi(req.get_param_value("limit"));
+            }
+
+            if(req.has_param("offset")){
+                offset = std::stoi(req.get_param_value("offset"));
+            }
+
+            // Get messages from database
+            auto messages = db.getMessagesByRoom(roomId, limit, offset);
+
+            // Prepare response with message data
+            json response = json::array();
+
+            // Populate message data into JSON array
+            for(const auto& message : messages){
+                response.push_back({
+                    {"id", message.id},
+                    {"room_id", message.room_id},
+                    {"user_id", message.user_id},
+                    {"content", message.content},
+                    {"message_type", message.message_type},
+                    {"created_at", message.created_at},
+                    {"edited_at", message.edited_at},
+                    {"is_deleted", message.is_deleted}
+                });
+            }
+
+            // Return message list
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Get room messages error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+g
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
     svr.listen("0.0.0.0", 8080);
