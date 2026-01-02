@@ -225,7 +225,7 @@ int main() {
     // ===== ROOM ENDPOINTS ======
 
     // GET /api/rooms - Get list of all chat rooms
-    svr.Get("/api/rooms" , [&db] (const httplib::Request& req, httplib::Response& res){
+    svr.Get("/api/rooms" , [&db](const httplib::Request& req, httplib::Response& res){
         try {
             // Fetch all chat rooms from database
             auto rooms = db.getAllRooms();
@@ -249,6 +249,45 @@ int main() {
         } catch(const std::exception& e){
             // Handle unexpected errors
             std::cerr << "Get rooms error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
+    // GET /api/rooms/: id - Get room details by ID
+    svr.Get(R"(/api/rooms/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse room ID from URL
+            int roomId = std::stoi(req.matches[1]);
+            
+            // Get room from database
+            auto room = db.getRoomById(roomId);
+
+            // Check if room exists
+            if(!room){
+                json error = {{"error", "Room not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Prepare response with room data
+            json response = {
+                {"id", room->id},
+                {"name", room->name},
+                {"description", room->description},
+                {"created_by", room->created_by},
+                {"created_at", room->created_at},
+                {"is_private", room->is_private}
+            };
+
+            // Return room data
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Get room error: " << e.what() << std::endl;
             json error = {{"error", "Internal server error"}};
             res.set_content(error.dump(), "application/json");
             res.status = 500;
