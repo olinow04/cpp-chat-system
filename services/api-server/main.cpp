@@ -335,7 +335,7 @@ int main() {
                 {"is_private", createRoom->is_private},
                 {"message", "Room created successfully"}
             };
-            
+
             // Send response
             res.set_content(response.dump(), "application/json");
             res.status = 201;
@@ -352,6 +352,42 @@ int main() {
             res.status = 500;
         }
     });
+
+    // GET /api/rooms/user/:id - Get rooms for a specific user
+    svr.Get(R"(/api/rooms/user/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse user ID from URL
+            int userId = std::stoi(req.matches[1]);
+
+            // Get rooms for the user from database
+            auto rooms = db.getRoomsByUser(userId);
+
+            // Prepare response with room data
+            json response = json::array();
+
+            // Populate room data into JSON array
+            for(const auto& room : rooms){
+                response.push_back({
+                    {"id", room.id},
+                    {"name", room.name},
+                    {"description", room.description},
+                    {"created_by", room.created_by},
+                    {"created_at", room.created_at},
+                    {"is_private", room.is_private}
+                });
+            }
+
+            // Return room list
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+    } catch(const std::exception& e){
+        // Handle unexpected errors
+        std::cerr << "Get user rooms error: " << e.what() << std::endl;
+        json error = {{"error", "Internal server error"}};
+        res.set_content(error.dump(), "application/json");
+        res.status = 500;
+    }
+}); 
 
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
