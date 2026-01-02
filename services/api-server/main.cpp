@@ -222,6 +222,39 @@ int main() {
         }
     });
 
+    // ===== ROOM ENDPOINTS ======
+
+    // GET /api/rooms - Get list of all chat rooms
+    svr.Get("/api/rooms" , [&db] (const httplib::Request& req, httplib::Response& res){
+        try {
+            // Fetch all chat rooms from database
+            auto rooms = db.getAllRooms();
+            // Prepare JSON response
+            json response = json::array();
+            // Populate room data into JSON array
+            for(const auto& room : rooms){
+                response.push_back({
+                    {"id", room.id},
+                    {"name", room.name},
+                    {"description", room.description},
+                    {"created_by", room.created_by},
+                    {"created_at", room.created_at},
+                    {"is_private", room.is_private}
+                });
+            }
+            // Return room list
+            res.set_content(response.dump(), "application/json");
+            // Success status
+            res.status = 200;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Get rooms error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
     svr.listen("0.0.0.0", 8080);
