@@ -565,7 +565,96 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
             res.status = 500;
         }
     });
-g
+
+    // POST /api/rooms/:room_id/messages - Send a new message to a room
+    svr.Post(R"(/api/rooms/(\d+)/messages)", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse room ID from URL
+            int roomId = std::stoi(req.matches[1]);
+
+            // Parse JSON request body
+            json j = json::parse(req.body);
+
+            // Validate required fields
+            if(!j.contains("user_id") || !j.contains("content")){
+                json error = {{"error", "Missing required fields: user_id, content"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Extract message data from request 
+            int userId = j["user_id"];
+            std::string content = j["content"];
+            std::string messageType = j.value("message_type", "text");
+
+            // Check if room exists 
+            auto room = db.getRoomById(roomId);
+            if(!room){
+                json error = {{"error", "Room not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Check if user exists
+            auto user = db.getUserById(userId);
+            if(!user){
+                json error = {{"error", "User not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Check if user is a member of the room
+            if(!db.isUserInRoom(userId, roomId)){
+                json error = {{"error", "User is not a member of the room"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 403;
+                return;
+            }
+
+            // Create message in database
+            auto createMessage = db.createMessage(roomId, userId, content, messageType);
+
+            // Check if message creation failed
+            if(!createMessage){
+                json error = {{"error", "Failed to create message"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response with message data
+            json response = {
+                {"id", createMessage->id},
+                {"room_id", createMessage->room_id},
+                {"user_id", createMessage->user_id},
+                {"content", createMessage->content},
+                {"message_type", createMessage->message_type},
+                {"created_at", createMessage->created_at},
+                {"edited_at", createMessage->edited_at},
+                {"is_deleted", createMessage->is_deleted},
+                {"message", "Message sent successfully"}
+            };
+
+            res.set_content(response.dump(), "application/json");
+            res.status = 201;
+
+        } catch(json::parse_error& e){
+            // Handle invalid JSON format
+            json error = {{"error", "Invalid JSON format"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 400;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Create message error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
     svr.listen("0.0.0.0", 8080);
