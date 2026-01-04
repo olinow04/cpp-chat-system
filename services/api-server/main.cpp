@@ -923,6 +923,75 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
         }
     });
 
+    // PATCH /api/messages/:id - Update a message by ID
+    svr.Patch(R"(/api/messages/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse message ID from URL
+            int messageId = std::stoi(req.matches[1]);
+
+            // Parse JSON request body
+            json j = json::parse(req.body);
+
+            // Get exisiting message from database
+            auto message = db.getMessageById(messageId);
+
+            // Check if message exists
+            if(!message){
+                json error = {{"error", "Message not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Create updated message object
+            Message updateMessage = *messsage;
+
+            // Update fields if provided in request
+            if(j.contains("content")){
+                updateMessage.content = j["content"];
+            }
+
+            // Update message in database
+            bool success = db.updateMessage(updateMessage.id, updateMessage.content);
+
+            // Check if update failed
+            if(!success){
+                json error = {{"error", "Failed to update message"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response with updated message data
+            json response = {
+                {"id", updateMessage.id},
+                {"room_id", updateMessage.room_id},
+                {"user_id", updateMessage.user_id},
+                {"content", updateMessage.content},
+                {"message_type", updateMessage.message_type},
+                {"created_at", updateMessage.created_at},
+                {"edited_at", updateMessage.edited_at},
+                {"is_deleted", updateMessage.is_deleted},
+                {"message", "Message updated successfully"}
+            };
+
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+
+        } catch(json::parse_error& e){
+            // Handle invalid JSON format
+            json error = {{"error", "Invalid JSON format"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 400;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Update message error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+    
     // Start the HTTP server and listen on all interfaces at port 8080
     std::cout << "Starting server on port 8080..." << std::endl;
     svr.listen("0.0.0.0", 8080);
