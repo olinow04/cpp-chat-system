@@ -222,6 +222,79 @@ int main() {
         }
     });
 
+    // PATCH /api/users/:id - Update user data by ID
+    svr.Patch(R"(/api/users/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse user ID from URL
+            int userId = std::stoi(req.matches[1]);
+
+            // Parse JSON request body
+            json j = json::parse(req.body);
+
+            // Get exisiting user from database
+            auto user = db.getUserById(userId);
+
+            // Check if user exists
+            if(!user){
+                json error = {{"error", "User not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Create updated user object
+            User updateUser = *user;
+
+            // Update fields if provided in request
+            if(j.contains("email")){
+                updateUser.email = j["email"];
+            }
+
+            if(j.contains("password")){
+                updateUser.password_hash = j["password"]; 
+            }
+
+            if(j.contains("is_active")){
+                updateUser.is_active = j["is_active"];
+            }
+
+            // Update user in database
+            bool success = db.updateUser(updateUser);
+
+            // Check if update failed
+            if(!success){
+                json error = {{"error", "Failed to update user"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response with updated user data
+            json response = {
+                {"id", updateUser.id},
+                {"username", updateUser.username},
+                {"email", updateUser.email},
+                {"is_active", updateUser.is_active},
+                {"message", "User updated successfully"}
+            };
+
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+          
+        } catch(json::parse_error& e){
+            // Handle invalid JSON format
+            json error = {{"error", "Invalid JSON format"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 400;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Update user error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // ===== ROOM ENDPOINTS ======
 
     // GET /api/rooms - Get list of all chat rooms
