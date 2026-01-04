@@ -295,6 +295,48 @@ int main() {
         }
     });
 
+    // DELETE /api/users/:id - Delete user by ID
+    svr.Delete(R"(/api/users/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse user ID from URL
+            int userId = std::stoi(req.matches[1]);
+
+            // Check if user exists
+            auto user = db.getUserById(userId);
+            
+            if(!user){
+                json error = {{"error", "User not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Delete user from database
+            bool success = db.deleteUser(userId);
+
+            // Check if deletion failed
+            if(!success){
+                json error = {{"error", "Failed to delete user"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response
+            json response = {{"message", "User deleted successfully"}};
+
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Delete user error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // ===== ROOM ENDPOINTS ======
 
     // GET /api/rooms - Get list of all chat rooms
