@@ -619,6 +619,76 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
             }
     });
 
+    // PATCH /api/rooms/:id - Update room data
+    svr.Patch(R"(/api/rooms/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse room ID from URL
+            int roomId = std::stoi(req.matches[1]);
+            
+            // Parse JSON request body
+            json j = json::parse(req.body);
+
+            // Check if room exists
+            auto room = db.getRoomById(roomId);
+
+            if(!room){
+                json error = {{"error", "Room not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Create updated room object
+            Room updateRoom = *room;
+
+            // Update fields if provided in request
+            if(j.contains("name")){
+                updateRoom.name = j["name"];
+            }
+
+            if(j.contains("description")){
+                updateRoom.description = j["description"];
+            }
+
+             // Update room in database
+            bool success = db.updateRoom(updateRoom.id, updateRoom.name, updateRoom.description);
+
+            // Check if update failed
+            if(!success){
+                json error = {{"error", "Failed to update room"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response with updated room data
+            json response = {
+                {"id", updateRoom.id},
+                {"name", updateRoom.name},
+                {"description", updateRoom.description},
+                {"created_by", updateRoom.created_by},
+                {"created_at", updateRoom.created_at},
+                {"is_private", updateRoom.is_private},
+                {"message", "Room updated successfully"}
+            };
+
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+
+        } catch(json::parse_error& e){
+            // Handle invalid JSON format
+            json error = {{"error", "Invalid JSON format"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 400;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Update room error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // ==== MESSAGE ENDPOINTS ======
 
     // GET /api/rooms/:room_id/messages - Get messages from a specific room
