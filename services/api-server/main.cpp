@@ -689,6 +689,47 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
         }
     });
 
+    // DELETE /api/rooms/:id - Delete a room by ID
+    svr.Delete(R"(/api/rooms/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse room ID from URL
+            int roomId = std::stoi(req.matches[1]);
+
+            // Check if room exists
+            auto room = db.getRoomById(roomId);
+
+            if(!room){
+                json error = {{"error", "Room not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Delete room from database
+            bool success = db.deleteRoom(roomId);
+
+            // Check if deletion failed
+            if(!success){
+                json error = {{"error", "Failed to delete room"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response
+            json response = {{"message", "Room deleted successfully"}};
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Delete room error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // ==== MESSAGE ENDPOINTS ======
 
     // GET /api/rooms/:room_id/messages - Get messages from a specific room
