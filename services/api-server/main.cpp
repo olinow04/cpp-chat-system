@@ -9,7 +9,10 @@
 
 #include "httplib.h"      // cpp-httplib: HTTP server library
 #include "json.hpp"       // nlohmann/json: JSON parsing library
-#include "db.h"           // Database access layer           
+#include "db.h"           // Database access layer
+#include "bcrypt_helper.h" // Password hashing helper
+#include "validation.h" // Input validation helper
+
 
 using json = nlohmann::json;
 
@@ -60,6 +63,30 @@ int main() {
             std::string email = j["email"];
             std::string password = j["password"];
 
+            // Validate username format
+            if(!Validator::isValidUsername(username)){
+                json error = {{"error", "Invalid username format"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Validate email format
+            if(!Validator::isValidEmail(email)){
+                json error = {{"error", "Invalid email format"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Validate password strength
+            if(!Validator::isValidPassword(password)){
+                json error = {{"error", "Password must be at least 8 characters long and contain both letters and numbers"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
             // Check if username already exists
             auto existingUser = db.getUserByUsername(username);
             if(existingUser){
@@ -73,7 +100,7 @@ int main() {
             User newUser;
             newUser.username = username;
             newUser.email = email;
-            newUser.password_hash = password; // TODO: Add bcrypt password hashing
+            newUser.password_hash = PasswordHelper::hashPassword(password); 
             newUser.is_active = true;
 
             // Save user to database
@@ -140,8 +167,9 @@ int main() {
                 res.status = 401;
                 return;
             }
-            // Verify password (TODO: Use bcrypt verify)
-            if(user->password_hash != password){ 
+
+            // Verify password 
+            if(!PasswordHelper::verifyPassword(password, user->password_hash)){ 
                 json error = {{"error", "Invalid credentials"}};
                 res.set_content(error.dump(), "application/json");
                 res.status = 401;
@@ -245,15 +273,47 @@ int main() {
             // Create updated user object
             User updateUser = *user;
 
-            // Update fields if provided in request
+            // Update and validate email if provided
             if(j.contains("email")){
-                updateUser.email = j["email"];
+                std::string newEmail = j["email"];
+
+                // Validate email format
+                if(!Validator::isValidEmail(newEmail)){
+                    json error = {{"error", "Invalid email format"}};
+                    res.set_content(error.dump(), "application/json");
+                    res.status = 400;
+                    return;
+                }
+
+                // Check if email is already used by another user
+                auto emailUser = db.getUserByEmail(newEmail);
+                if(emailUser && emailUser->id != userId){
+                    json error = {{"error", "Email already in use"}};
+                    res.set_content(error.dump(), "application/json");
+                    res.status = 409;
+                    return;
+                }
+
+                updateUser.email = newEmail;
             }
 
+            // Update and validate password if provided
             if(j.contains("password")){
-                updateUser.password_hash = j["password"]; 
+                std::string newPassword = j["password"];
+
+                // Validate password strength
+                if(!Validator::isValidPassword(newPassword)){
+                    json error = {{"error", "Password must be at least 8 characters and contain letters and numbers"}};
+                    res.set_content(error.dump(), "application/json");
+                    res.status = 400;
+                    return;
+                }
+
+                // Hash new password
+                updateUser.password_hash = PasswordHelper::hashPassword(newPassword);
             }
 
+            // Update is_active status if provided
             if(j.contains("is_active")){
                 updateUser.is_active = j["is_active"];
             }
@@ -428,6 +488,40 @@ int main() {
             std::string description = j["description"];
             int created_by = j["created_by"];
             bool is_private = j.value("is_private", false);
+
+            // Validate room name
+            if(!Validator::isValidRoomName(name)){
+                json error = {{"error", "Invalid room name (must be 1-100 characters)"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Validate description length
+            if(description.length() > 500){
+                json error = {{"error", "Description too long (max 500 characters)"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Verify that the creator user exists
+            auto creator = db.getUserById(created_by);
+            if(!creator){
+                json error = {{"error", "Creator user not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Check if room name already exists
+            auto existingRoom = db.getRoomByName(name);
+            if(existingRoom){
+                json error = {{"error", "Room name already exists"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 409;
+                return;
+            }
 
             // Create room in database
             auto createRoom = db.createRoom(name, description, created_by, is_private);
@@ -641,13 +735,43 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
             // Create updated room object
             Room updateRoom = *room;
 
-            // Update fields if provided in request
+            // Update and validate room name if provided
             if(j.contains("name")){
-                updateRoom.name = j["name"];
+                std::string newName = j["name"];
+
+                // Validate room name
+                if(!Validator::isValidRoomName(newName)){
+                    json error = {{"error", "Invalid room name (must be 1-100 characters)"}};
+                    res.set_content(error.dump(), "application/json");
+                    res.status = 400;
+                    return;
+                }
+
+                // Check if new room name already exists
+                auto existingRoom = db.getRoomByName(newName);
+                if(existingRoom && existingRoom->id != roomId){
+                    json error = {{"error", "Room name already exists"}};
+                    res.set_content(error.dump(), "application/json");
+                    res.status = 409;
+                    return;
+                }
+
+                updateRoom.name = newName;
             }
 
+            // Update and validate description if provided
             if(j.contains("description")){
-                updateRoom.description = j["description"];
+                std::string newDescription = j["description"];
+
+                // Validate description length
+                if(newDescription.length() > 500){
+                    json error = {{"error", "Description too long (max 500 characters)"}};
+                    res.set_content(error.dump(), "application/json");
+                    res.status = 400;
+                    return;
+                }
+
+                updateRoom.description = newDescription;
             }
 
              // Update room in database
@@ -814,6 +938,22 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
             std::string content = j["content"];
             std::string messageType = j.value("message_type", "text");
 
+            // Validate message content
+            if(!Validator::isValidMessageContent(content)){
+                json error = {{"error", "Invalid message content (must be 1-1000 characters)"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Validate message type
+            if(messageType != "text" && messageType != "image" && messageType != "file"){
+                json error = {{"error", "Invalid message type (must be 'text', 'image', or 'file')"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
             // Check if room exists 
             auto room = db.getRoomById(roomId);
             if(!room){
@@ -943,12 +1083,30 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
                 return;
             }
 
-            // Create updated message object
-            Message updateMessage = *messsage;
+            // Check if message is already deleted
+            if(message->is_deleted){
+                json error = {{"error", "Cannot update a deleted message"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
 
-            // Update fields if provided in request
+            // Create updated message object
+            Message updateMessage = *message;
+
+            // Update and validate content if provided
             if(j.contains("content")){
-                updateMessage.content = j["content"];
+                std::string newContent = j["content"];
+
+                // Validate message content
+                if(!Validator::isValidMessageContent(newContent)){
+                    json error = {{"error", "Invalid message content (must be 1-1000 characters)"}};
+                    res.set_content(error.dump(), "application/json");
+                    res.status = 400;
+                    return;
+                }
+
+                updateMessage.content = newContent;
             }
 
             // Update message in database
