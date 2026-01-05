@@ -12,6 +12,7 @@
 #include "db.h"           // Database access layer
 #include "bcrypt_helper.h" // Password hashing helper
 #include "validation.h" // Input validation helper
+#include "rabbitmq_client.h" // RabbitMQ client for message queuing
 
 
 using json = nlohmann::json;
@@ -30,6 +31,14 @@ int main() {
 
     std::cout << "Connected to database successfully." << std::endl;
 
+    // Connect to RabbitMQ
+    RabbitMQClient rabbitmq("localhost", 5672, "chatuser", "chatpass");
+
+    // Check RabbitMQ connection
+    if(!rabbitmq.isConnected()){
+        std::cerr << "Warning: RabbitMQ not connected. Events will not be published." << std::endl;
+    }
+
     // Configure CORS (Cross-Origin Resource Sharing) headers
     svr.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Access-Control-Allow-Origin", "*");
@@ -45,7 +54,7 @@ int main() {
     // ====== USER ENDPOINTS ======
 
     // POST /api/register - Register a new user
-    svr.Post("/api/register", [&db](const httplib::Request& req, httplib::Response& res){
+    svr.Post("/api/register", [&db, &rabbitmq](const httplib::Request& req, httplib::Response& res){
         try {
             // Parse JSON request body
             json j = json::parse(req.body);
@@ -121,6 +130,17 @@ int main() {
                 {"email", created->email},
                 {"message", "User registered successfully"}
             };
+
+            // Publish event to RabbitMQ
+            json event = {
+                {"event_type", "user.registered"},
+                {"user_id", created->id},
+                {"username", created->username},
+                {"email", created->email},
+                {"timestamp", created->created_at}
+            };
+
+            rabbitmq.publishEvent("chat_events", event.dump());
 
             res.set_content(response.dump(), "application/json");
             res.status = 201;
@@ -632,7 +652,7 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
 });
 
     // POST /api/rooms/:id/members - Add a user to a room
-    svr.Post(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httplib::Response& res){
+    svr.Post(R"(/api/rooms/(\d+)/members)", [&db, &rabbitmq](const httplib::Request& req, httplib::Response& res){
         try {
             // Parse room ID from URL
             int roomId = std::stoi(req.matches[1]);
@@ -696,6 +716,18 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
                 {"user_id", userId},
                 {"role", role}
             };
+
+            // Publish event to RabbitMQ
+            json event = {
+                {"event_type", "user.joined_room"},
+                {"room_id", roomId},
+                {"user_id", userId},
+                {"room_name", room->name},
+                {"username", user->username},
+                {"role", role}
+            };
+            
+            rabbitmq.publishEvent("user.joined_room", event);
 
             res.set_content(response.dump(), "application/json");
             res.status = 200;
@@ -917,7 +949,7 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
     });
 
     // POST /api/rooms/:room_id/messages - Send a new message to a room
-    svr.Post(R"(/api/rooms/(\d+)/messages)", [&db](const httplib::Request& req, httplib::Response& res){
+    svr.Post(R"(/api/rooms/(\d+)/messages)", [&db, &rabbitmq](const httplib::Request& req, httplib::Response& res){
         try {
             // Parse room ID from URL
             int roomId = std::stoi(req.matches[1]);
@@ -1003,6 +1035,19 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
                 {"is_deleted", createMessage->is_deleted},
                 {"message", "Message sent successfully"}
             };
+
+            // Publish event to RabbitMQ
+            json event = {
+                {"event_type", "message.created"},
+                {"message_id", createMessage->id},
+                {"room_id", createMessage->room_id},
+                {"user_id", createMessage->user_id},
+                {"content", createMessage->content},
+                {"message_type", createMessage->message_type},
+                {"timestamp", createMessage->created_at}
+            };
+
+            rabbitmq.publishEvent("message.created", event);
 
             res.set_content(response.dump(), "application/json");
             res.status = 201;

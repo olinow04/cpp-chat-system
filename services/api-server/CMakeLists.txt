@@ -6,6 +6,10 @@ add_executable(api_server
 
 find_package(OpenSSL REQUIRED)
 
+# Find RabbitMQ-C
+find_library(RABBITMQ_C_LIBRARY NAMES rabbitmq REQUIRED)
+find_path(RABBITMQ_C_INCLUDE_DIR NAMES rabbitmq-c/amqp.h REQUIRED)
+
 # Include directories
 target_include_directories(api_server
     PRIVATE
@@ -13,6 +17,7 @@ target_include_directories(api_server
         ${PostgreSQL_INCLUDE_DIRS}
         ${PQXX_INCLUDE_DIR}
         ${OPENSSL_INCLUDE_DIR}
+        ${RABBITMQ_C_INCLUDE_DIR}
 )
 
 # Link libraries
@@ -22,6 +27,7 @@ target_link_libraries(api_server
         ${PQXX_LIBRARY}
         OpenSSL::Crypto 
         OpenSSL::SSL 
+        ${RABBITMQ_C_LIBRARY}
 )
 
 target_compile_options(api_server PRIVATE
