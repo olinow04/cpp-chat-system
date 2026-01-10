@@ -140,7 +140,7 @@ int main() {
                 {"timestamp", created->created_at}
             };
 
-            rabbitmq.publishEvent("chat_events", event.dump());
+            rabbitmq.publishEvent("user.registered", event);
 
             res.set_content(response.dump(), "application/json");
             res.status = 201;
