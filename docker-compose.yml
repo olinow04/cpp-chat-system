@@ -61,6 +61,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # LibreTranslate - Translation API
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: chat-libretranslate
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    environment: 
+      LT_LOAD_ONLY:  "en,pl,es,fr,de"     # Load only selected languages (faster startup)
+      LT_UPDATE_MODELS: "false"          # Don't update models on startup
+      LT_DISABLE_WEB_UI: "false"         # Keep web UI enabled for testing
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/languages"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # Give it time to load models      
+
   # API Server 
   api-server:
     build:
@@ -130,6 +150,8 @@ volumes:
   rabbitmq_data:
     driver: local
   redis_data:
+    driver: local
+  libretranslate_data:  
     driver: local
 
 # Network for inter-service communication

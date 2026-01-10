@@ -13,6 +13,7 @@
 #include "bcrypt_helper.h" // Password hashing helper
 #include "validation.h" // Input validation helper
 #include "rabbitmq_client.h" // RabbitMQ client for message queuing
+#include "translation_client.h" // Translation API client
 
 
 using json = nlohmann::json;
@@ -37,6 +38,16 @@ int main() {
     // Check RabbitMQ connection
     if(!rabbitmq.isConnected()){
         std::cerr << "Warning: RabbitMQ not connected. Events will not be published." << std::endl;
+    }
+
+    // Initialize Translation Client
+    TranslationClient translationClient("http://localhost:5001");
+
+    // Check Translation API availability
+    if(!translationClient.isAvailable()){
+        std::cerr << "Warning: Translation API not available. Translation features will be disabled." << std::endl;
+    } else {
+        std::cout << "Translation API connected successfully." << std::endl;
     }
 
     // Configure CORS (Cross-Origin Resource Sharing) headers
@@ -1230,6 +1241,90 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
         } catch(const std::exception& e){
             // Handle unexpected errors
             std::cerr << "Delete message error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
+    // ==== TRANSLATION ENDPOINTS ======
+
+    // POST /api/translate - Translate text between languages
+    svr.Post("/api/translate", [&translationClient](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse JSON request body
+            json j = json::parse(req.body);
+
+            // Validate required fields
+            if(!j.contains("text") || !j.contains("target_lang")){
+                json error = {{"error", "Missing required fields: text, target_lang"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Extract translation parameters 
+            std::string text = j["text"];
+            std::string targetLang = j["target_lang"];
+            std::string sourceLang = j.value("source_lang", "auto");
+
+            // Validate text length 
+            if(text.empty() || text.length() > 5000){
+                json error = {{"error", "Text must be between 1 and 5000 characters"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Validate language codes (2-letter ISO 639-1 codes)
+            if(targetLang.length() != 2 || (sourceLang != "auto" && sourceLang.length() != 2)){
+                json error = {{"error", "Invalid language code format (use 2-letter ISO 639-1 codes)"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 400;
+                return;
+            }
+
+            // Perform translation 
+            std::string translatedText;
+
+            if(sourceLang == "auto"){
+                // Auto-detect source language
+
+                translatedText = translationClient.translateAuto(text, targetLang);
+            } else {
+                // Use specified source language
+
+                translatedText = translationClient.translate(text, sourceLang, targetLang);
+            }
+
+            // Check if translation succeeded
+            if(translatedText.empty()){
+                json error = {{"error", "Translation failed. Check if the language codes are supported."}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response
+            json response = {
+                {"original_text", text},
+                {"translated_text", translatedText},
+                {"source_lang", sourceLang},
+                {"target_lang", targetLang},
+                {"message", "Translation successful"}
+            };
+
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+
+        } catch(json::parse_error& e){
+            // Handle invalid JSON format
+            json error = {{"error", "Invalid JSON format"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 400;
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Translation error: " << e.what() << std::endl;
             json error = {{"error", "Internal server error"}};
             res.set_content(error.dump(), "application/json");
             res.status = 500;

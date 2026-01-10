@@ -5,6 +5,7 @@ add_executable(api_server
 )
 
 find_package(OpenSSL REQUIRED)
+find_package(CURL REQUIRED)
 
 # Find RabbitMQ-C
 find_library(RABBITMQ_C_LIBRARY NAMES rabbitmq REQUIRED)
@@ -18,6 +19,7 @@ target_include_directories(api_server
         ${PQXX_INCLUDE_DIR}
         ${OPENSSL_INCLUDE_DIR}
         ${RABBITMQ_C_INCLUDE_DIR}
+        ${CURL_INCLUDE_DIRS}
 )
 
 # Link libraries
@@ -28,6 +30,7 @@ target_link_libraries(api_server
         OpenSSL::Crypto 
         OpenSSL::SSL 
         ${RABBITMQ_C_LIBRARY}
+        CURL::libcurl
 )
 
 target_compile_options(api_server PRIVATE
