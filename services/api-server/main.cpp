@@ -735,6 +735,7 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
                 {"user_id", userId},
                 {"room_name", room->name},
                 {"username", user->username},
+                {"user_email", user->email},
                 {"role", role}
             };
             
@@ -1053,6 +1054,9 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
                 {"message_id", createMessage->id},
                 {"room_id", createMessage->room_id},
                 {"user_id", createMessage->user_id},
+                {"sender_username", user->username},
+                {"sender_email", user->email},
+                {"room_name", room->name},
                 {"content", createMessage->content},
                 {"message_type", createMessage->message_type},
                 {"timestamp", createMessage->created_at}
