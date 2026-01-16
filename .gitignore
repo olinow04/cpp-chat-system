@@ -11,10 +11,11 @@
 *.lib
 
 # Executables
-chat_client
-chat_server
 api_server
 notification_service
+
+# Backup files
+*.bak
 
 # CMake
 CMakeCache.txt

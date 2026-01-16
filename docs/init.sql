@@ -48,19 +48,6 @@ CREATE TABLE IF NOT EXISTS room_members (
     UNIQUE(room_id, user_id)
 );
 
--- Notifications table
-CREATE TABLE IF NOT EXISTS notifications (
-    id SERIAL PRIMARY KEY,
-    uuid UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL,
-    title VARCHAR(200),
-    message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    sent_via_email BOOLEAN DEFAULT FALSE
-);
-
 -- Indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_messages_room_id ON messages(room_id);
 CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);

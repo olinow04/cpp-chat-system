@@ -134,23 +134,6 @@ bool Database::updateLastLogin(int id) {
     }
 }
 
-bool Database::setUserActive(int id, bool active) {
-    if(!connected_) return false;
-    try {
-        pqxx::work txn(*conn_);
-        // Parameterized UPDATE query 
-        txn.exec(
-            "UPDATE users SET is_active=$1 WHERE id=$2",
-            pqxx::params(active, id)
-        );
-        txn.commit();
-        return true;
-    } catch (const std::exception& e) {
-        std::cerr << "Set user active error: " << e.what() << std::endl;
-        return false;
-    }
-}
-
 bool Database::deleteUser(int id) {
     if(!connected_) return false;
     try {
@@ -351,23 +334,6 @@ std::vector<Room> Database::getAllRooms() const{
         }
     } catch (const std::exception& e) {
         std::cerr << "Get all rooms error: " << e.what() << std::endl;
-    }
-    return rooms;
-}
-
-std::vector<Room> Database::getPublicRooms() const{
-    std::vector<Room> rooms;
-    if(!connected_) return rooms;
-    try {
-        pqxx::work txn(*conn_);
-        // Fetch only public rooms (is_private=false) ordered by creation date
-        pqxx::result r = txn.exec("SELECT * FROM rooms WHERE is_private=false ORDER BY created_at DESC");
-        // Iterate through result set and convert each row
-        for(const auto& row : r){
-            rooms.push_back(rowToRoom(row));
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "Get public rooms error: " << e.what() << std::endl;
     }
     return rooms;
 }
@@ -603,25 +569,4 @@ std::vector<Message> Database::getMessagesByRoom(int room_id, int limit, int off
         std::cerr << "Get messages by room error: " << e.what() << std::endl;
     }
     return messages;
-}
-
-int Database::getMessageCountInRoom(int room_id) const{
-    if(!connected_) return 0;
-    try {
-        // Read-only transaction
-        pqxx::work txn(*conn_);
-        // Execute COUNT query to get number of messages in the room
-        // Excludes soft-deleted messages
-        pqxx::result r = txn.exec(
-            "SELECT COUNT(*) FROM messages WHERE room_id=$1 AND is_deleted=false",
-            pqxx::params(room_id)
-        );
-        if(!r.empty()) {
-            return r[0][0].as<int>();
-        }
-        return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "Get message count in room error: " << e.what() << std::endl;
-        return 0;
-    }
 }

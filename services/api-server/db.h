@@ -83,8 +83,7 @@ class Database {
 
         // Helper methods
         bool updateLastLogin(int id);
-        bool setUserActive(int id, bool active);
-
+        
         // Query methods
         std::optional<User> getUserByUsername(const std::string& username) const;
         std::optional<User> getUserById(int id) const;
@@ -102,7 +101,6 @@ class Database {
         std::optional<Room> getRoomById(int id) const;
         std::optional<Room> getRoomByName(const std::string& name) const;
         std::vector<Room> getAllRooms() const;
-        std::vector<Room> getPublicRooms() const;
         std::vector<Room> getRoomsByUser(int user_id) const;
 
          // ========== ROOM MEMBER OPERATIONS ===========
@@ -122,7 +120,6 @@ class Database {
         // Query methods
         std::optional<Message> getMessageById(int id) const;
         std::vector<Message> getMessagesByRoom(int room_id, int limit = 50, int offset = 0) const;
-        int getMessageCountInRoom(int room_id) const;
 
     private:
         std::unique_ptr<pqxx::connection> conn_;  // PostgreSQL connection object

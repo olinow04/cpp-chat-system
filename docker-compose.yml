@@ -103,27 +103,7 @@ services:
         condition: service_healthy
     networks:
       - chat-network
-
-  # Chat Server 
-  chat-server:
-    build:
-      context: .
-      dockerfile: services/chat-server/Dockerfile
-    container_name: chat-chat-server
-    restart: unless-stopped
-    ports:
-      - "9999:9999"
-    environment:
-      RABBITMQ_URL: amqp://chatuser:chatpass@rabbitmq:5672/
-      REDIS_URL: redis://redis:6379
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - chat-network
-
+      
   # Notification Service 
   notification-service:
     build:
