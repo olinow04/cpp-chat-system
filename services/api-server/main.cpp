@@ -281,6 +281,37 @@ int main() {
         }
     });
 
+    // GET /api/users - Get list of all users
+    svr.Get("/api/users", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Fetch all users from database
+            auto users = db.getAllUsers();
+
+            // Prepare JSON response
+            json response = json::array();
+            for(const auto& user : users){
+                response.push_back({
+                    {"id", user.id},
+                    {"username", user.username},
+                    {"email", user.email},
+                    {"created_at", user.created_at},
+                    {"is_active", user.is_active}
+                });
+            }
+            
+            // Return user list
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+                
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Get users error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
     // PATCH /api/users/:id - Update user data by ID
     svr.Patch(R"(/api/users/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
         try {
@@ -892,6 +923,70 @@ svr.Get(R"(/api/rooms/(\d+)/members)", [&db](const httplib::Request& req, httpli
         } catch(const std::exception& e){
             // Handle unexpected errors
             std::cerr << "Delete room error: " << e.what() << std::endl;
+            json error = {{"error", "Internal server error"}};
+            res.set_content(error.dump(), "application/json");
+            res.status = 500;
+        }
+    });
+
+    // DELETE /api/rooms/:room_id/members/:user_id - Remove a user from a room
+    svr.Delete(R"(/api/rooms/(\d+)/members/(\d+))", [&db](const httplib::Request& req, httplib::Response& res){
+        try {
+            // Parse room IDs from URL
+            int roomId = std::stoi(req.matches[1]);
+            int userId = std::stoi(req.matches[2]);
+
+            // Check if room exists
+            auto room = db.getRoomById(roomId);
+            if(!room){
+                json error = {{"error", "Room not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Check if user exists
+            auto user = db.getUserById(userId);
+            if(!user){
+                json error = {{"error", "User not found"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Check if user is a member of the room
+            if(!db.isUserInRoom(userId, roomId)){
+                json error = {{"error", "User is not a member of the room"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 404;
+                return;
+            }
+
+            // Remove user from room in database
+            bool success = db.removeUserFromRoom(userId, roomId);
+
+            // Check if removal failed
+            if(!success){
+                json error = {{"error", "Failed to remove user from room"}};
+                res.set_content(error.dump(), "application/json");
+                res.status = 500;
+                return;
+            }
+
+            // Return success response
+            json response = {
+                {"message", "User removed from room successfully"},
+                {"room_id", roomId},
+                {"user_id", userId}
+            };
+
+            // Return response
+            res.set_content(response.dump(), "application/json");
+            res.status = 200;
+            
+        } catch(const std::exception& e){
+            // Handle unexpected errors
+            std::cerr << "Remove user from room error: " << e.what() << std::endl;
             json error = {{"error", "Internal server error"}};
             res.set_content(error.dump(), "application/json");
             res.status = 500;
