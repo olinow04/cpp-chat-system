@@ -1,7 +1,7 @@
 # API Server
 add_executable(api_server
     main.cpp
-    db.cpp
+    Database.cpp
 )
 
 find_package(OpenSSL REQUIRED)

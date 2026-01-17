@@ -4,7 +4,7 @@
  * Uses libpqxx for PostgreSQL interaction with parameterized queries
  */
 
-#include "db.h"
+#include "Database.h"
 #include <iostream>
 
 // Constructor - initialize database with connection string
@@ -28,6 +28,7 @@ bool Database::connect() {
             std::cout << "Connected to database : " << conn_->dbname() << std::endl;
         }
         return connected_;
+        
     } catch (const std::exception& e) {
         std::cerr << "Database connection error: " << e.what() << std::endl;
         connected_ = false;

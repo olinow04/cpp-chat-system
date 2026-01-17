@@ -15,7 +15,7 @@
 
 // User data structure - represents a user in the system
 struct User{
-    int id; 
+    int id{0}; 
     std::string username;
     std::string email;
     std::string password_hash;
@@ -27,19 +27,19 @@ struct User{
 
 // Room data structure - represents a chat room
 struct Room{
-    int id;
+    int id{0};
     std::string name;
     std::string description;
-    int created_by;
+    int created_by{0};
     std::string created_at;
     bool is_private;
 };
 
 // Message data structure - represents a message in a chat room
 struct Message{
-    int id;
-    int room_id;
-    int user_id;
+    int id{0};
+    int room_id{0};
+    int user_id{0};
     std::string content;
     std::string message_type;
     std::string created_at;

@@ -9,11 +9,11 @@
 
 #include "httplib.h"      // cpp-httplib: HTTP server library
 #include "json.hpp"       // nlohmann/json: JSON parsing library
-#include "db.h"           // Database access layer
-#include "bcrypt_helper.h" // Password hashing helper
-#include "validation.h" // Input validation helper
-#include "rabbitmq_client.h" // RabbitMQ client for message queuing
-#include "translation_client.h" // Translation API client
+#include "Database.h"           // Database access layer
+#include "PasswordHelper.hpp" // Password hashing helper
+#include "Validator.hpp" // Input validation helper
+#include "RabbitMQClient.hpp" // RabbitMQ client for message queuing
+#include "TranslationClient.hpp" // Translation API client
 
 
 using json = nlohmann::json;
@@ -320,6 +320,17 @@ int main() {
 
             // Parse JSON request body
             json j = json::parse(req.body);
+
+            /// Validate allowed fields    
+            static const std::set<std::string> allowedFields{"password", "email", "is_active"};
+            for (auto it = j.begin(); it != j.end(); ++it) {
+                if (allowedFields.find(it.key()) == allowedFields.end()) {
+                    json error = {{"error", "Invalid field in request: " + it.key()}};
+                    res.set_content(error.dump(), "application/json");
+                    res.status = 400;
+                    return;
+                }
+            }
 
             // Get exisiting user from database
             auto user = db.getUserById(userId);

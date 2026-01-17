@@ -2,8 +2,9 @@
 #include <string>
 #include <regex>
 
+
 /**
- * Input validation helpers
+ * Input validation helpers 
  */
 class Validator {
 public:
