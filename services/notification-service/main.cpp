@@ -24,7 +24,7 @@
 #include <cstdlib>
 #include <rabbitmq-c/amqp.h>
 #include <rabbitmq-c/tcp_socket.h> 
-#include "smtp_client.h"
+#include "SMTPClient.hpp"
 #include "json.hpp"
 
 using json = nlohmann::json;
@@ -47,12 +47,12 @@ public:
     RabbitMQConsumer(const std::string& host, int port,
                      const std::string& user, const std::string& password,
                      const std::string& queueName,
-                     SMTPClient* smtpClient = nullptr)
+                     std::unique_ptr<SMTPClient> smtpClient = nullptr)
         : queueName_(queueName), 
           connected_(false), 
           conn_(nullptr), 
           socket_(nullptr), 
-          smtpClient_(smtpClient) {
+          smtpClient_(std::move(smtpClient)) {
 
         try {
             std::cout << "Connecting to RabbitMQ at " << host << ":" << port << "..." << std::endl;
@@ -576,7 +576,7 @@ private:
     bool connected_;                   // Connection status flag
     amqp_connection_state_t conn_;     // RabbitMQ connection handle
     amqp_socket_t* socket_;            // TCP socket handle
-    SMTPClient* smtpClient_;           // SMTP client for sending emails (nullptr = simulation mode)
+    std::unique_ptr<SMTPClient> smtpClient_;           // SMTP client for sending emails (nullptr = simulation mode)
 };
 
 /**
@@ -601,7 +601,7 @@ int main() {
     const char* smtpPass = std::getenv("SMTP_PASSWORD");
 
     // Initialize SMTP client if credentials are provided
-    SMTPClient* smtpClient = nullptr;
+    std::unique_ptr<SMTPClient> smtpClientPtr;
 
     if(smtpHost && smtpPortStr && smtpUser && smtpPass) {
         int smtpPort = std::atoi(smtpPortStr);
@@ -610,14 +610,13 @@ int main() {
         std::cout << "Server: " << smtpHost << ":" << smtpPort << std::endl;
         std::cout << "User: " << smtpUser << std::endl;
 
-        smtpClient = new SMTPClient(smtpHost, smtpPort, smtpUser, smtpPass);
+        smtpClientPtr = std::make_unique<SMTPClient>(smtpHost, smtpPort, smtpUser, smtpPass);
 
-        if(smtpClient->isConfigured()) {
+        if(smtpClientPtr->isConfigured()) {
             std::cout << "SMTP configured successfully" << std::endl;
         } else {
             std::cerr << "SMTP configuration invalid" << std::endl;
-            delete smtpClient;
-            smtpClient = nullptr;
+            smtpClientPtr.reset();
         }
     } else {
         std::cout << "SMTP credentials not found in environment" << std::endl;
@@ -638,27 +637,18 @@ int main() {
         "chatuser",
         "chatpass",
         "notification_queue",
-        smtpClient
+        std::move(smtpClientPtr)
     );
 
     // Check if RabbitMQ connection was successful
     if(!consumer.isConnected()) {
         std::cerr << "Failed to connect to RabbitMQ. Exiting." << std::endl;
         
-        if(smtpClient) {
-            delete smtpClient;
-        }
-        
         return 1;
     }
 
     // Start consuming events (blocks forever until terminated)
     consumer.startConsuming();
-
-    // Cleanup (never reached unless consumer exits)
-    if(smtpClient) {
-        delete smtpClient;
-    }
 
     return 0;
 }
