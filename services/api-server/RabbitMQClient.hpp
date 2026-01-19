@@ -83,10 +83,10 @@ public:
             }
             
             connected_ = true;
-            std:: cout << "Connected to RabbitMQ at " << host << ":" << port << std::endl;
+            std::cout << "Connected to RabbitMQ at " << host << ":" << port << std::endl;
             
         } catch (const std::exception& e) {
-            std:: cerr << "RabbitMQ connection error: " << e.what() << std::endl;
+            std::cerr << "RabbitMQ connection error: " << e.what() << std::endl;
             connected_ = false;
         }
     }
@@ -118,7 +118,7 @@ public:
             // Prepare message properties
             amqp_basic_properties_t props;
             props._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
-            props. content_type = amqp_cstring_bytes("application/json");
+            props.content_type = amqp_cstring_bytes("application/json");
             props.delivery_mode = 2;  // persistent
             
             // Publish message
@@ -134,14 +134,14 @@ public:
             );
             
             if (result < 0) {
-                std:: cerr << "Failed to publish message" << std::endl;
+                std::cerr << "Failed to publish message" << std::endl;
                 return;
             }
             
-            std::cout << "Published event: " << routingKey << " -> " << messageBody. substr(0, 100) << "..." << std::endl;
+            std::cout << "Published event: " << routingKey << " -> " << messageBody.substr(0, 100) << "..." << std::endl;
             
-        } catch (const std:: exception& e) {
-            std::cerr << "Failed to publish event: " << e. what() << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "Failed to publish event: " << e.what() << std::endl;
         }
     }
     

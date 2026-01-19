@@ -206,7 +206,7 @@ std::vector<User> Database::getAllUsers() const {
         pqxx::result r = txn.exec("SELECT * FROM users");
         // Iterate through result - pqxx::result works like a container
         for(const auto& row : r) {
-            users.push_back(rowToUser(row));
+            users.emplace_back(rowToUser(row));
         }
     } catch (const std::exception& e) {
         std::cerr << "Get all users error: " << e.what() << std::endl;
@@ -331,7 +331,7 @@ std::vector<Room> Database::getAllRooms() const{
         pqxx::result r = txn.exec("SELECT * FROM rooms ORDER BY created_at DESC");
         // Iterate through result set and convert each row
         for(const auto& row : r){
-            rooms.push_back(rowToRoom(row));
+            rooms.emplace_back(rowToRoom(row));
         }
     } catch (const std::exception& e) {
         std::cerr << "Get all rooms error: " << e.what() << std::endl;
@@ -356,7 +356,7 @@ std::vector<Room> Database::getRoomsByUser(int user_id) const{
         );
         // Convert each room row to Room object
         for(const auto& row : r){
-            rooms.push_back(rowToRoom(row));
+            rooms.emplace_back(rowToRoom(row));
         }
     } catch (const std::exception& e) {
         std::cerr << "Get rooms by user error: " << e.what() << std::endl;
@@ -423,7 +423,7 @@ std::vector<User> Database::getRoomMembers(int room_id) const{
         );
         // Convert each row to User object
         for(const auto& row : r){
-            members.push_back(rowToUser(row));
+            members.emplace_back(rowToUser(row));
         }
         return members;
     } catch (const std::exception& e) {
@@ -452,7 +452,7 @@ bool Database::isUserInRoom(int user_id, int room_id) const{
 // ========== MESSAGE OPERATIONS ===========
 
 // Helper function to convert database row to Message struct
-Message Database::rowToMessage(const pqxx:: row& row) const {
+Message Database::rowToMessage(const pqxx::row& row) const {
     return Message{
         row["id"].as<int>(),
         row["room_id"].as<int>(),
@@ -564,7 +564,7 @@ std::vector<Message> Database::getMessagesByRoom(int room_id, int limit, int off
         );
         // Convert each row to Message object
         for(const auto& row : r){
-            messages.push_back(rowToMessage(row));
+            messages.emplace_back(rowToMessage(row));
         }
     } catch (const std::exception& e) {
         std::cerr << "Get messages by room error: " << e.what() << std::endl;

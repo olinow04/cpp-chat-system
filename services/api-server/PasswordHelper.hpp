@@ -16,7 +16,7 @@ public:
      * Hash a plaintext password
      * Returns hashed password as hex string
      */
-    static std::string hashPassword(const std:: string& password) {
+    static std::string hashPassword(const std::string& password) {
         // Generate salt
         unsigned char salt[16];
         RAND_bytes(salt, sizeof(salt));
@@ -24,7 +24,7 @@ public:
         // Hash with PBKDF2
         unsigned char hash[32];
         PKCS5_PBKDF2_HMAC(
-            password. c_str(), password.length(),
+            password.c_str(), password.length(),
             salt, sizeof(salt),
             10000,  // iterations
             EVP_sha256(),
@@ -50,7 +50,7 @@ public:
         size_t colonPos = storedHash.find(':');
         if(colonPos == std::string::npos) return false;
         
-        std:: string saltHex = storedHash.substr(0, colonPos);
+        std::string saltHex = storedHash.substr(0, colonPos);
         std::string hashHex = storedHash.substr(colonPos + 1);
         
         // Convert hex salt back to bytes
@@ -72,7 +72,7 @@ public:
         // Convert to hex and compare
         std::stringstream ss;
         for(int i = 0; i < 32; i++)
-            ss << std::hex << std:: setw(2) << std::setfill('0') << (int)hash[i];
+            ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
         
         return ss.str() == hashHex;
     }

@@ -50,7 +50,7 @@ public:
      * 1-100 characters, not empty
      */
     static bool isValidRoomName(const std::string& name) {
-        return ! name.empty() && name.length() <= 100;
+        return !name.empty() && name.length() <= 100;
     }
     
     /**
@@ -59,5 +59,13 @@ public:
      */
     static bool isValidMessageContent(const std::string& content) {
         return !content.empty() && content.length() <= 1000;
+    }
+
+    /**
+     * Validate room description
+     * Max 500 characters
+     */
+    static bool isValidRoomDescription(const std::string& description) {
+        return description.length() <= 500;
     }
 };

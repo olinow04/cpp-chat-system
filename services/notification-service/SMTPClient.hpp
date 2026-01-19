@@ -4,6 +4,8 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <ctime>
+#include <cstring>
 
  /**
   * SMTP Email Client using libcurl

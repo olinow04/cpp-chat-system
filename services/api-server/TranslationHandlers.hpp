@@ -26,7 +26,7 @@ private:
         
         for (auto it = j.begin(); it != j.end(); ++it) {
             if (allowedFields.find(it.key()) == allowedFields.end()) {
-                invalidFields. emplace_back(it.key());
+                invalidFields.emplace_back(it.key());
             }
         }
         
@@ -109,7 +109,7 @@ public:
                 : translationClient_.translate(text, sourceLang, targetLang);
 
             if (translatedText.empty()) {
-                json error = {{"error", "Translation failed.  Check if the language codes are supported."}};
+                json error = {{"error", "Translation failed. Check if the language codes are supported."}};
                 res.set_content(error.dump(), "application/json");
                 res.status = 500;
                 return;

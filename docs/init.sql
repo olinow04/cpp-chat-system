@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP,
+    created_at TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP(0),
     is_active BOOLEAN DEFAULT TRUE
 );
 
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     name VARCHAR(100) NOT NULL,
     description TEXT,
     created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP,
     is_private BOOLEAN DEFAULT FALSE
 );
 
@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS messages (
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     content TEXT NOT NULL,
     message_type VARCHAR(20) DEFAULT 'text',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    edited_at TIMESTAMP,
+    created_at TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP,
+    edited_at TIMESTAMP(0),
     is_deleted BOOLEAN DEFAULT FALSE
 );
 
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS room_members (
     id SERIAL PRIMARY KEY,
     room_id INTEGER REFERENCES rooms(id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    joined_at TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP,
     role VARCHAR(20) DEFAULT 'member',
     UNIQUE(room_id, user_id)
 );
@@ -72,7 +72,7 @@ ON CONFLICT DO NOTHING;
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
+    NEW.updated_at = CURRENT_TIMESTAMP::timestamp(0);
     RETURN NEW;
 END;
 $$ language 'plpgsql';

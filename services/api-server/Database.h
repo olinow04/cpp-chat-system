@@ -129,5 +129,5 @@ class Database {
         // Helper functions to convert database rows to structs
         User rowToUser(const pqxx::row& row) const;
         Room rowToRoom(const pqxx::row& row) const;
-        Message rowToMessage(const pqxx:: row& row) const;
+        Message rowToMessage(const pqxx::row& row) const;
 };
