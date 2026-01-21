@@ -4,7 +4,7 @@
 #include <ctime>
 #include <rabbitmq-c/amqp.h>
 #include <rabbitmq-c/tcp_socket.h>
-#include "json.hpp"
+#include "../external/json.hpp"
 
 using json = nlohmann::json;
 

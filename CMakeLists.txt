@@ -49,9 +49,6 @@ if(BUILD_NOTIFICATION_SERVICE)
     add_subdirectory(services/notification-service)
 endif()
 
-# Documentation
-add_subdirectory(docs)
-
 # Print build configuration
 message(STATUS "=== Build Configuration ===")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")

@@ -4,9 +4,9 @@
 #include <string>
 #include <set>
 #include <vector>
-#include "httplib.h"
-#include "json.hpp"
-#include "TranslationClient.hpp"
+#include "../external/httplib.h"
+#include "../external/json.hpp"
+#include "../clients/TranslationClient.hpp"
 
 using json = nlohmann::json;
 

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "httplib.h"
-#include "Database.h"
-#include "RabbitMQClient.hpp"
-#include "TranslationClient.hpp"
-#include "UserHandlers.hpp"
-#include "RoomHandlers.hpp"
-#include "MessageHandlers.hpp"
-#include "TranslationHandlers.hpp"
+#include "../external/httplib.h"
+#include "../database/Database.h"
+#include "../clients/RabbitMQClient.hpp"
+#include "../clients/TranslationClient.hpp"
+#include "../handlers/UserHandlers.hpp"
+#include "../handlers/RoomHandlers.hpp"
+#include "../handlers/MessageHandlers.hpp"
+#include "../handlers/TranslationHandlers.hpp"
 
 /**
  * HTTP Router - Central routing configuration

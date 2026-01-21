@@ -4,11 +4,11 @@
 #include <string>
 #include <set>
 #include <vector>
-#include "httplib.h"
-#include "json.hpp"
-#include "Database.h"
-#include "Validator.hpp"
-#include "RabbitMQClient.hpp"
+#include "../external/httplib.h"
+#include "../external/json.hpp"
+#include "../database/Database.h"
+#include "../utils/Validator.hpp"
+#include "../clients/RabbitMQClient.hpp"
 
 using json = nlohmann::json;
 

@@ -16,7 +16,8 @@ find_path(RABBITMQ_C_INCLUDE_DIR NAMES rabbitmq-c/amqp.h REQUIRED)
 target_include_directories(notification_service
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/services/api-server # include for json.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/external
         ${RABBITMQ_C_INCLUDE_DIR}
         ${CURL_INCLUDE_DIRS} # libcurl includes
 )

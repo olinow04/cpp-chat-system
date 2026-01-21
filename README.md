@@ -156,28 +156,39 @@ cpp-chat-system/
 │   ├── api-server/
 │   │   ├── CMakeLists.txt
 │   │   ├── main.cpp           # Application entry point
-│   │   ├── Database.h         # Database interface
-│   │   ├── Database.cpp       # PostgreSQL implementation
-│   │   ├── HTTPRouter.hpp     # Route configuration
-│   │   ├── UserHandlers.hpp   # User endpoint handlers
-│   │   ├── RoomHandlers.hpp   # Room endpoint handlers
-│   │   ├── MessageHandlers.hpp # Message endpoint handlers
-│   │   ├── TranslationHandlers.hpp # Translation handlers
-│   │   ├── RabbitMQClient.hpp # Event publisher
-│   │   ├── TranslationClient.hpp # LibreTranslate client
-│   │   ├── PasswordHelper.hpp # Password hashing
-│   │   ├── Validator.hpp      # Input validation
-│   │   ├── httplib.h         # HTTP server library
-│   │   └── json.hpp          # JSON library
+│   │   ├── src/
+│   │   │   ├── database/
+│   │   │   │   ├── Database.h         # Database interface
+│   │   │   │   └── Database.cpp       # PostgreSQL implementation
+│   │   │   ├── handlers/
+│   │   │   │   ├── UserHandlers.hpp   # User endpoint handlers
+│   │   │   │   ├── RoomHandlers.hpp   # Room endpoint handlers
+│   │   │   │   ├── MessageHandlers.hpp # Message endpoint handlers
+│   │   │   │   └── TranslationHandlers.hpp # Translation handlers
+│   │   │   ├── clients/
+│   │   │   │   ├── RabbitMQClient.hpp # Event publisher
+│   │   │   │   └── TranslationClient.hpp # LibreTranslate client
+│   │   │   ├── utils/
+│   │   │   │   ├── PasswordHelper.hpp # Password hashing
+│   │   │   │   └── Validator.hpp      # Input validation
+│   │   │   └── routing/
+│   │   │       └── HTTPRouter.hpp     # Route configuration
+│   │   └── external/
+│   │       ├── httplib.h         # HTTP server library
+│   │       └── json.hpp          # JSON library
 │   │
 │   └── notification-service/
 │       ├── CMakeLists.txt
 │       ├── main.cpp           # Service entry point
-│       ├── RabbitMQConsumer.hpp # Event consumer
-│       └── SMTPClient.hpp     # Email sender (libcurl)
+│       ├── src/
+│       │   ├── consumers/
+│       │   │   └── RabbitMQConsumer.hpp # Event consumer
+│       │   └── clients/
+│       │       └── SMTPClient.hpp     # Email sender (libcurl)
+│       └── external/
+│           └── json.hpp          # JSON library
 │
-├── docs/
-│   ├── CMakeLists.txt
+├── database/
 │   └── init.sql              # Database schema & initialization
 │
 └── build/                    # Generated build files
@@ -195,6 +206,10 @@ cpp-chat-system/
 - **SMTP Client** - Custom implementation using libcurl with STARTTLS
 - **Input Validation** - Comprehensive data validation
 - **Error Handling** - Structured JSON error responses
+
+## License
+
+This is an **educational project** created for learning purposes.
 
 ## Author
 

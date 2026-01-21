@@ -1,7 +1,7 @@
 # API Server
 add_executable(api_server
     main.cpp
-    Database.cpp
+    src/database/Database.cpp
 )
 
 find_package(OpenSSL REQUIRED)
@@ -15,6 +15,8 @@ find_path(RABBITMQ_C_INCLUDE_DIR NAMES rabbitmq-c/amqp.h REQUIRED)
 target_include_directories(api_server
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/external
         ${PostgreSQL_INCLUDE_DIRS}
         ${PQXX_INCLUDE_DIR}
         ${OPENSSL_INCLUDE_DIR}

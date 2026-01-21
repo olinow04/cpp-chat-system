@@ -20,8 +20,8 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
-#include "SMTPClient.hpp"
-#include "RabbitMQConsumer.hpp"
+#include "src/clients/SMTPClient.hpp"
+#include "src/consumers/RabbitMQConsumer.hpp"
 
 /**
  * Application configuration constants

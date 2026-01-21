@@ -91,7 +91,7 @@ std::optional<User> Database::createUser(const User& user) {
 bool Database::updateUser(const User& user) {
     if(!connected_) return false;
     try {
-        // User update transaction
+        // update transaction
         pqxx::work txn(*conn_);
         // Handle NULL for last_login if string is empty
         if (user.last_login.empty()) {

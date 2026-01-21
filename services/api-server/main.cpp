@@ -7,11 +7,11 @@
 #include <string>
 #include <memory>
 
-#include "httplib.h"
-#include "Database.h"
-#include "RabbitMQClient.hpp"
-#include "TranslationClient.hpp"
-#include "HTTPRouter.hpp"
+#include "external/httplib.h"
+#include "src/database/Database.h"
+#include "src/clients/RabbitMQClient.hpp"
+#include "src/clients/TranslationClient.hpp"
+#include "src/routing/HTTPRouter.hpp"
 
 /**
  * Application configuration constants
